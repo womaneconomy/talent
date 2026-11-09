@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>재능은 애매하지 않다</title>
+
+<!-- 본문 서체: Pretendard (자체 사이트에서는 이 줄로 로드됩니다. 미리보기 환경에서는 Noto Sans KR로 대체) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<!-- 대체 서체 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #fafafa;
+    --fg: #050505;
+    --accent: #ff4d00;
+    --muted: #666;
+  }
+  body.dark {
+    --bg: #050505;
+    --fg: #f5f5f5;
+    --muted: #999;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", system-ui, sans-serif;
+    transition: background .5s, color .5s;
+  }
+
+  /* 스크롤 길이: 스크롤할수록 글자가 흩어진다 */
+  .scroller { height: 320vh; }
+  .stage {
+    position: sticky; top: 0;
+    height: 100vh; overflow: hidden;
+    display: grid; place-items: center;
+  }
+
+
+  /* 메인 타이포 */
+  .title {
+    position: relative;
+    font-weight: 900;
+    letter-spacing: -0.045em;
+    line-height: .82;
+    text-align: center;
+    user-select: none;
+    will-change: transform;
+    z-index: 1;
+  }
+  .line { display: block; white-space: nowrap; }
+  .l1 { font-size: min(19vw, 320px); }
+  .l2 { font-size: min(12.5vw, 220px); }
+  .ch { display: inline-block; will-change: transform, opacity; opacity: 0; }
+  .sp { display: inline-block; width: .22em; }
+
+
+  /* 하단 */
+  .hint {
+    position: absolute; bottom: 36px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px; font-weight: 600; letter-spacing: .2em;
+    color: var(--muted); text-align: center;
+    transition: opacity .4s;
+  }
+  .hint svg { display: block; margin: 10px auto 0; animation: bob 1.6s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(6px); } }
+
+  .caption {
+    position: absolute; bottom: 16vh; left: 50%;
+    transform: translate(-50%, 12px);
+    font-size: clamp(15px, 1.7vw, 22px); font-weight: 600;
+    letter-spacing: -0.01em; white-space: nowrap;
+    opacity: 0; transition: opacity .6s, transform .6s;
+    z-index: 3;
+  }
+  .caption.on { opacity: 1; transform: translate(-50%, 0); }
+  .caption b { color: var(--accent); font-weight: 800; }
+
+  .toggle {
+    position: fixed; right: 22px; bottom: 22px; z-index: 5;
+    border: 1px solid var(--fg); background: transparent; color: var(--fg);
+    border-radius: 999px; padding: 8px 14px;
+    font: 600 12px/1 inherit; font-family: inherit; cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hint svg { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="scroller" id="scroller">
+  <section class="stage" id="stage">
+
+    <h1 class="title" id="title" aria-label="재능은 애매하지 않다"></h1>
+
+
+    <p class="caption" id="caption">결과를 본 사람만 할 수 있는 <b>말</b>.</p>
+
+    <div class="hint" id="hint">
+      SCROLL TO EXPLORE
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 5v14M12 19l-7-7M12 19l7-7" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </section>
+</div>
+
+<button class="toggle" id="toggle" type="button">Dark Mode</button>
+
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const title = document.getElementById('title');
+  const stage = document.getElementById('stage');
+  const scroller = document.getElementById('scroller');
+
+  /* 1. 글자를 한 자씩 span으로 쪼갠다 */
+  const LINES = [['재능은', 'l1'], ['애매하지 않다', 'l2']];
+  const chars = [];
+  LINES.forEach(([text, cls]) => {
+    const line = document.createElement('span');
+    line.className = 'line ' + cls;
+    line.setAttribute('aria-hidden', 'true');
+    [...text].forEach(c => {
+      const s = document.createElement('span');
+      if (c === ' ') { s.className = 'sp'; line.appendChild(s); return; }
+      s.className = 'ch';
+      s.textContent = c;
+      line.appendChild(s);
+      chars.push({
+        el: s,
+        ang: Math.random() * Math.PI * 2,          // 흩어질 방향
+        far: 0.55 + Math.random() * 0.9,           // 흩어질 거리 배율
+        rot: (Math.random() - 0.5) * 300,          // 흩어질 때 회전
+        cx: 0, cy: 0,                              // 원래 자리(중심)
+        x: 0, y: 0, r: 0, w: 900                   // 현재 값(보간용)
+      });
+    });
+    title.appendChild(line);
+  });
+
+  /* 2. 글자 원래 위치 측정 */
+  function measure() {
+    const sr = stage.getBoundingClientRect();
+    chars.forEach(c => {
+      const line = c.el.parentElement;
+      c.cx = sr.left + title.offsetLeft + line.offsetLeft + c.el.offsetLeft + c.el.offsetWidth / 2;
+      c.cy = sr.top + title.offsetTop + line.offsetTop + c.el.offsetTop + c.el.offsetHeight / 2;
+    });
+  }
+  addEventListener('resize', measure);
+  document.fonts.ready.then(measure);
+  measure();
+
+  /* 3. 입력: 마우스/터치, 스크롤 */
+  let mx = -9999, my = -9999;
+  addEventListener('pointermove', e => { mx = e.clientX; my = e.clientY; });
+  document.addEventListener('pointerleave', () => { mx = my = -9999; });
+
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  const easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+  const caption = document.getElementById('caption');
+  const hint = document.getElementById('hint');
+  const t0 = performance.now();
+
+  /* 4. 메인 루프 */
+  function frame(now) {
+    const span = Math.max(1, scroller.offsetHeight - innerHeight);
+    const p = clamp(scrollY / span);
+
+    // 스크롤할수록 흩어진다
+    const scatter = easeInOut(p);
+    const base = Math.min(innerWidth, innerHeight) * 0.6;
+    const R = Math.min(innerWidth, innerHeight) * 0.22;   // 커서 반경
+
+    chars.forEach((c, i) => {
+      // 한 글자씩 페이드인 (0.4초 뒤 시작, 글자마다 0.18초 간격, 각 0.6초)
+      c.el.style.opacity = reduce ? 1 : easeOut(clamp((now - t0 - 400 - i * 180) / 600)).toFixed(3);
+
+      let tx = Math.cos(c.ang) * base * c.far * scatter;
+      let ty = Math.sin(c.ang) * base * c.far * scatter;
+      let tr = c.rot * scatter;
+      let tw = 900;
+
+      if (!reduce) {
+        const dx = c.cx + tx - mx, dy = c.cy + ty - my;
+        const d = Math.hypot(dx, dy) || 1;
+        if (d < R) {
+          const f = 1 - d / R;
+          const push = f * f * 110;
+          tx += dx / d * push;
+          ty += dy / d * push;
+          tr += f * 28 * (dx > 0 ? 1 : -1);
+          tw = 900 - 700 * f;              // 커서에 가까울수록 가늘어진다(=애매해진다)
+        }
+      }
+
+      const k = reduce ? 1 : 0.12;
+      c.x += (tx - c.x) * k;
+      c.y += (ty - c.y) * k;
+      c.r += (tr - c.r) * k;
+      c.w += (tw - c.w) * k;
+      c.el.style.transform = `translate(${c.x.toFixed(1)}px, ${c.y.toFixed(1)}px) rotate(${c.r.toFixed(1)}deg)`;
+      c.el.style.fontWeight = Math.round(c.w);
+    });
+
+    // 마우스 방향으로 살짝 기울기
+    if (!reduce && mx > -9999) {
+      const rx = (my / innerHeight - .5) * -10;
+      const ry = (mx / innerWidth - .5) * 10;
+      title.style.transform = `perspective(1000px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+    }
+
+    caption.classList.toggle('on', p > 0.82);
+    hint.style.opacity = p > 0.05 ? 0 : 1;
+
+    requestAnimationFrame(frame);
+  }
+
+
+  /* 5. 다크 모드 */
+  const toggle = document.getElementById('toggle');
+  toggle.addEventListener('click', () => {
+    const dark = document.body.classList.toggle('dark');
+    toggle.textContent = dark ? 'Light Mode' : 'Dark Mode';
+  });
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
